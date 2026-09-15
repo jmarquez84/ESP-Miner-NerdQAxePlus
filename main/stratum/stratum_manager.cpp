@@ -23,6 +23,7 @@
 #include "system.h"
 
 #include "stratum_config.h"
+#include "ws_shares.h"
 #include "stratum_manager.h"
 #include "stratum_task_v2.h"
 #include "utils.h"
@@ -232,6 +233,10 @@ void StratumManager::dispatch(int pool, JsonDocument &doc)
             ESP_LOGW(tag, "message result rejected");
             rejectedShare(pool);
         }
+        // only ever a queue push with a zero timeout: we are holding m_mutex
+        // here and it is not recursive
+        ws_shares_push_verdict(pool, m_stratum_api_v1_message.message_id, m_stratum_api_v1_message.response_success,
+                               m_stratum_api_v1_message.error_msg);
         m_lastSubmitResponseTimestamp = esp_timer_get_time();
         break;
     }
@@ -254,19 +259,19 @@ void StratumManager::dispatch(int pool, JsonDocument &doc)
     freeStratumV1Message(&m_stratum_api_v1_message);
 }
 
-void StratumManager::submitShare(int pool, const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
-                                 const uint32_t version_rolled, const uint32_t version_base)
+int StratumManager::submitShare(int pool, const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
+                                const uint32_t version_rolled, const uint32_t version_base)
 {
     if (!m_stratumTasks[pool]) {
         ESP_LOGE(m_tag, "stratum task is null");
-        return;
+        return -1;
     }
     // send to the selected pool
     if (!m_stratumTasks[pool]->m_isConnected) {
         ESP_LOGE(m_tag, "selected pool not connected");
-        return;
+        return -1;
     }
-    m_stratumTasks[pool]->submitShare(jobid, extranonce_2, ntime, nonce, version_rolled, version_base);
+    return m_stratumTasks[pool]->submitShare(jobid, extranonce_2, ntime, nonce, version_rolled, version_base);
 }
 
 // --- stratum config related; mutexed

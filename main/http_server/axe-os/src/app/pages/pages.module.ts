@@ -12,6 +12,7 @@ import { InfluxDBModule } from './influxdb/influxdb.module';
 import { SystemModule } from './system/system.module';
 import { SwarmModule } from './swarm/swarm.module';
 import { HomeModule } from './home/home.module';
+import { RealtimeSha256Module } from './realtime-sha256/realtime-sha256.module';
 import { AlertModule } from './alert/alert.module';
 import { SecurityModule } from './security/security.module';
 import { CanSwarmModule } from './can-swarm/can-swarm.module';
@@ -35,6 +36,7 @@ import { CanSwarmModule } from './can-swarm/can-swarm.module';
     AlertModule,
     //PipesModule,
     HomeModule,
+    RealtimeSha256Module,
     SecurityModule,
     CanSwarmModule,
     ],

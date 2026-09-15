@@ -64,7 +64,7 @@ void construct_bm_job(mining_notify *params, const char *merkle_root, const uint
 static const double truediffone = 26959535291011309493156476344723991336010898738574164086137773096960.0;
 
 /* testing a nonce and return the diff - 0 means invalid */
-double test_nonce_value(const bm_job *job, const uint32_t nonce, const uint32_t rolled_version)
+double test_nonce_value(const bm_job *job, const uint32_t nonce, const uint32_t rolled_version, uint8_t *out_hash)
 {
     double d64, s64, ds;
     unsigned char header[80];
@@ -83,6 +83,10 @@ double test_nonce_value(const bm_job *job, const uint32_t nonce, const uint32_t 
     // double hash the header
     mbedtls_sha256(header, 80, hash_buffer, 0);
     mbedtls_sha256(hash_buffer, 32, hash_result, 0);
+
+    if (out_hash) {
+        memcpy(out_hash, hash_result, 32);
+    }
 
     d64 = truediffone;
     s64 = le256todouble(hash_result);

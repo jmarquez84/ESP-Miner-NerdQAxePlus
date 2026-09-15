@@ -18,6 +18,7 @@
 #include "hashrate_monitor_task.h"
 #include "utils.h"
 #include "nvs_flash.h"
+#include "ws_shares.h"
 #include "nvs.h"
 #include "esp_attr.h"
 
@@ -294,7 +295,8 @@ static void handle_nonce(Board *board, uint8_t slave_id, const uint8_t *buf, siz
 
     rolled_version |= job->version;
 
-    double nonce_diff = test_nonce_value(job, nonce, rolled_version);
+    uint8_t nonce_hash[32];
+    double nonce_diff = test_nonce_value(job, nonce, rolled_version, nonce_hash);
 
     const char *pool_str = job->pool_id ? "Sec" : "Pri";
 
@@ -305,10 +307,16 @@ static void handle_nonce(Board *board, uint8_t slave_id, const uint8_t *buf, siz
     // TODO: pushShare() for slave nonces — needs asic_nr from slave
     // (slave_id * asics_per_slave + asic_nr), not yet transmitted over CAN
 
+    int submit_id = -1;
     if (nonce_diff >= job->pool_diff) {
-        STRATUM_MANAGER->submitShare(job->pool_id, job->jobid, job->extranonce2,
-                                     job->ntime, nonce, rolled_version, job->version);
+        submit_id = STRATUM_MANAGER->submitShare(job->pool_id, job->jobid, job->extranonce2,
+                                                 job->ntime, nonce, rolled_version, job->version);
     }
+
+    // asic_nr stays unknown for slave nonces: it is not transmitted over CAN
+    // yet (see the pushShare TODO above)
+    ws_shares_push_nonce(nonce_hash, nonce_diff, job->pool_diff, job->asic_diff, job->target, job->jobid,
+                         job->extranonce2, job->ntime, nonce, rolled_version, job->pool_id, -1, false, submit_id);
 
     STRATUM_MANAGER->checkForBestDiff(job->pool_id, nonce_diff, job->target);
     STRATUM_MANAGER->checkForFoundBlock(job->pool_id, nonce_diff, job->target);

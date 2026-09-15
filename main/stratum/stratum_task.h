@@ -66,8 +66,11 @@ class StratumTaskBase {
 
     // Pure virtual - protocol specific
     virtual void protocolLoop() = 0;
-    virtual void submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
-                             const uint32_t version_rolled, const uint32_t version_base) = 0;
+    // returns the protocol level id the submit went out with (JSON-RPC id for
+    // V1, sequence number for V2) so the pool's answer can be matched to it,
+    // or -1 when nothing was sent
+    virtual int submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
+                            const uint32_t version_rolled, const uint32_t version_base) = 0;
     virtual StratumTransport* selectTransport() = 0;
 
     // Stratum task function
@@ -112,8 +115,8 @@ class StratumTaskV1 : public StratumTaskBase {
     TlsStratumTransport m_tlsTransport;
 
     void protocolLoop() override;
-    void submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
-                     const uint32_t version_rolled, const uint32_t version_base) override;
+    int submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
+                    const uint32_t version_rolled, const uint32_t version_base) override;
     StratumTransport* selectTransport() override;
 
   public:

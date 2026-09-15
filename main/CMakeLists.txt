@@ -41,6 +41,7 @@ SRCS
     "./http_server/http_cors.cpp"
     "./http_server/http_utils.cpp"
     "./http_server/http_websocket.cpp"
+    "./http_server/ws_shares.cpp"
     "./http_server/handler_influx.cpp"
     "./http_server/handler_alert.cpp"
     "./http_server/handler_can_swarm.cpp"

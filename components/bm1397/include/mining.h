@@ -37,7 +37,11 @@ void calculate_merkle_root_hash(const char *coinbase_tx, const uint8_t merkle_br
 
 void construct_bm_job(mining_notify *params, const char *merkle_root, const uint32_t version_mask, bm_job *new_job);
 
-double test_nonce_value(const bm_job *job, const uint32_t nonce, const uint32_t rolled_version);
+// Returns the share difficulty; 0 means invalid.
+// out_hash, when given, receives the raw SHA-256d result in internal (little endian)
+// order - reverse it before displaying it in the usual Bitcoin notation.
+double test_nonce_value(const bm_job *job, const uint32_t nonce, const uint32_t rolled_version,
+                        uint8_t *out_hash = nullptr);
 
 char *extranonce_2_generate(uint32_t extranonce_2, uint32_t length);
 

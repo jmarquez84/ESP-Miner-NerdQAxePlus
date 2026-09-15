@@ -268,11 +268,20 @@ bool StratumApi::parseMethods(JsonDocument &doc, const char *method_str, Stratum
     return true;
 }
 
-bool StratumApi::parseResult(JsonDocument &doc) {
+bool StratumApi::parseResult(JsonDocument &doc, const char **error_msg) {
     JsonVariant result_json = doc["result"];
     JsonVariant error_json = doc["error"];
 
     if (!error_json.isNull()) {
+        // stratum errors are [code, "reason", traceback]; keep the reason so
+        // the share stream can tell the user why the pool said no
+        if (error_msg) {
+            if (error_json.is<JsonArray>() && error_json.size() > 1) {
+                *error_msg = error_json[1].as<const char *>();
+            } else {
+                *error_msg = error_json.as<const char *>();
+            }
+        }
         return false;
     }
 
@@ -286,7 +295,7 @@ bool StratumApi::parseResult(JsonDocument &doc) {
 bool StratumApi::parseResponses(JsonDocument &doc, StratumApiV1Message *message)
 {
     message->method = STRATUM_RESULT;
-    message->response_success = parseResult(doc);
+    message->response_success = parseResult(doc, &message->error_msg);
     return true;
 }
 
@@ -485,14 +494,16 @@ bool StratumApi::authenticate(StratumTransport *transport, const char *username,
 //--------------------------------------------------------------------
 // submitShare()
 //--------------------------------------------------------------------
-bool StratumApi::submitShare(StratumTransport *transport, const char *username, const char *jobid, const char *extranonce_2, uint32_t ntime,
-                             uint32_t nonce, uint32_t version)
+int StratumApi::submitShare(StratumTransport *transport, const char *username, const char *jobid, const char *extranonce_2, uint32_t ntime,
+                            uint32_t nonce, uint32_t version)
 {
+    int id = m_send_uid++;
+
     snprintf(m_requestBuffer, BUFFER_SIZE,
              "{\"id\": %d, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%08lx\", \"%08lx\", \"%08lx\"]}\n",
-             m_send_uid++, username, jobid, extranonce_2, ntime, nonce, version);
+             id, username, jobid, extranonce_2, ntime, nonce, version);
 
-    return send(transport, m_requestBuffer);
+    return send(transport, m_requestBuffer) ? id : -1;
 }
 
 //--------------------------------------------------------------------

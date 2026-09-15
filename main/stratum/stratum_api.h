@@ -67,6 +67,9 @@ typedef struct
     uint32_t version_mask;
     // result
     bool response_success;
+    // points into the JsonDocument being parsed, so it is only valid for as
+    // long as that document lives and must not be freed
+    const char *error_msg;
 } StratumApiV1Message;
 
 class StratumApi {
@@ -95,7 +98,7 @@ class StratumApi {
     static bool parseMethods(JsonDocument &doc, const char* method_str, StratumApiV1Message *message);
     static bool parseResponses(JsonDocument &doc, StratumApiV1Message *message);
     static bool parseSetupResponses(JsonDocument &doc, StratumApiV1Message *message);
-    static bool parseResult(JsonDocument &doc);
+    static bool parseResult(JsonDocument &doc, const char **error_msg = nullptr);
 
     bool send(StratumTransport *transport, const char* message);
   public:
@@ -119,9 +122,10 @@ class StratumApi {
     // Sends an authentication message.
     bool authenticate(StratumTransport *transport, const char *username, const char *pass);
 
-    // Submits a share.
-    bool submitShare(StratumTransport *transport, const char *username, const char *jobid, const char *extranonce_2, uint32_t ntime, uint32_t nonce,
-                     uint32_t version);
+    // Submits a share. Returns the JSON-RPC id the request went out with so
+    // the caller can match the pool's answer to it, or -1 if the send failed.
+    int submitShare(StratumTransport *transport, const char *username, const char *jobid, const char *extranonce_2, uint32_t ntime, uint32_t nonce,
+                    uint32_t version);
 
     // Sends a configure-version-rolling message.
     bool configureVersionRolling(StratumTransport *transport);

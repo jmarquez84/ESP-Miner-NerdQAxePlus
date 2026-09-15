@@ -552,6 +552,63 @@ Remove a node from the registry (slaves only, `id >= 1`). Requires OTP.
 
 ---
 
+### Real time SHA-256 stream
+
+#### `GET /api/v2/ws/shares` (WebSocket)
+
+Pushes every nonce the ASIC reports and the pool's verdict on the ones that were
+submitted. Used by the "Real time sha256" page. Up to 3 concurrent clients; the
+device answers `is_network_allowed` only, no OTP (same as the log socket).
+
+Each frame is a JSON **array** of events coalesced over 100 ms. Every event has
+`t` (type), `ts` (device milliseconds, epoch once SNTP has synced) and `p`
+(pool: 0 primary, 1 secondary).
+
+`t: "n"` - a nonce verified on the ESP32 with a double SHA-256:
+
+```json
+{
+  "t": "n", "ts": 1757415600123, "p": 0,
+  "h": "00000000000a3f...c1",
+  "d": 41233.7,
+  "pd": 32768,
+  "ad": 2048,
+  "nb": 386604057,
+  "nt": 1757415598,
+  "no": 439041101,
+  "v": 536870912,
+  "job": "6a1f",
+  "en2": "0000002a",
+  "a": 2,
+  "dup": false,
+  "sid": 118
+}
+```
+
+`h` is the hash in the usual Bitcoin notation (leading zeros first). `d` is the
+share difficulty, `pd` the pool difficulty and `ad` the ASIC ticket difficulty.
+`a` is the ASIC index, `-1` when unknown (CAN slaves). `sid` is the JSON-RPC id
+of the `mining.submit`, or `-1` when the nonce stayed below `pd` and never left
+the device.
+
+`t: "v"` - the pool answered a submit:
+
+```json
+{ "t": "v", "ts": 1757415600456, "p": 0, "sid": 118, "ok": false, "why": "Job not found" }
+```
+
+Match it to a nonce event by `p` + `sid`. SV2 acknowledges in batches without
+naming the sequence numbers: those arrive as `"sid": -1` plus `"cnt": <n>`, and
+cover the `n` oldest shares still waiting on that pool.
+
+`t: "r"` - the pool reconnected and its id counter restarted, so anything still
+pending for `p` can never be matched.
+
+`t: "d"` - `n` events were dropped because the queue filled up (a stalled
+browser); the device never blocks a mining task to deliver them.
+
+---
+
 ## Legacy V1 Endpoints
 
 These endpoints remain on v1 for backwards compatibility (Swarm discovery across devices with different firmware versions) or because they handle binary data.

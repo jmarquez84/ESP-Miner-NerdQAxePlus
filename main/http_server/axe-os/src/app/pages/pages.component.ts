@@ -45,6 +45,11 @@ import { IIdentifyV2 } from '../models/IIdentifyV2';
                 home: true,
             },
             {
+                title: this.translateService.instant('NAVIGATION.REALTIME_SHA256'),
+                icon: 'activity-outline',
+                link: '/pages/realtime-sha256',
+            },
+            {
                 title: this.translateService.instant('NAVIGATION.SWARM'),
                 icon: 'share-outline',
                 link: '/pages/swarm',

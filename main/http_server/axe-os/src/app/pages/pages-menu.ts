@@ -8,6 +8,11 @@ export const MENU_ITEMS: NbMenuItem[] = [
     home: true,
   },
   {
+    title: 'Real time sha256',
+    icon: 'activity-outline',
+    link: '/pages/realtime-sha256',
+  },
+  {
     title: 'Swarm',
     icon: 'share-outline',
     link: '/pages/swarm',

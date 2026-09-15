@@ -131,8 +131,11 @@ class StratumManager {
     // Submit shares to the active Stratum pool
     // version_rolled = full rolled version (base | rolled bits)
     // version_base   = original block template version
-    void submitShare(int pool, const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
-                     const uint32_t version_rolled, const uint32_t version_base);
+    // returns the protocol level id the submit went out with, so the caller can
+    // hand it to the share stream and have the pool's answer matched to it, or
+    // -1 when the share never left the device
+    int submitShare(int pool, const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
+                    const uint32_t version_rolled, const uint32_t version_base);
 
     void checkForFoundBlock(int pool, double diff, uint32_t nbits);
 

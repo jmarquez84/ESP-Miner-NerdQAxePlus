@@ -11,6 +11,7 @@
 
 #include "simple_ring64.hpp"
 #include "utils.h"
+#include "ws_shares.h"
 
 static const char *TAG = "asic_result";
 
@@ -88,8 +89,10 @@ void ASIC_result_task(void *pvParameters)
         // now we have the original job and can `or` the version
         asic_result.rolled_version |= job->version;
 
-        // check the nonce difficulty
-        double nonce_diff = test_nonce_value(job, asic_result.nonce, asic_result.rolled_version);
+        // check the nonce difficulty; keep the hash around for the real time
+        // sha256 view, it is the only place it ever exists
+        uint8_t nonce_hash[32];
+        double nonce_diff = test_nonce_value(job, asic_result.nonce, asic_result.rolled_version, nonce_hash);
 
         // get best known session diff
         char bestDiffString[16];
@@ -118,10 +121,19 @@ void ASIC_result_task(void *pvParameters)
         }
 
         // send duplicates to the server (they will get rejected and counted as rejected)
+        int submit_id = -1;
         if (nonce_diff >= job->pool_diff) {
-            STRATUM_MANAGER->submitShare(job->pool_id, job->jobid, job->extranonce2, job->ntime, asic_result.nonce,
+            submit_id = STRATUM_MANAGER->submitShare(job->pool_id, job->jobid, job->extranonce2, job->ntime, asic_result.nonce,
                                     asic_result.rolled_version, job->version);
         }
+
+        // feed the real time sha256 view. this only ever copies a POD into a
+        // queue with a zero timeout, and does nothing at all while no browser
+        // is listening - we are the highest priority task in the firmware and
+        // must not block here
+        ws_shares_push_nonce(nonce_hash, nonce_diff, job->pool_diff, job->asic_diff, job->target, job->jobid,
+                             job->extranonce2, job->ntime, asic_result.nonce, asic_result.rolled_version, job->pool_id,
+                             asic_result.asic_nr, duplicate, submit_id);
 
         STRATUM_MANAGER->checkForBestDiff(job->pool_id, nonce_diff, job->target);
 

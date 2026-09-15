@@ -19,6 +19,7 @@ extern "C" {
 #include "macros.h"
 #include "nvs_config.h"
 #include "system.h"
+#include "ws_shares.h"
 
 extern "C" {
 #include "sv2_protocol.h"
@@ -627,6 +628,9 @@ void StratumTaskV2::handleSubmitSharesSuccess(const uint8_t *payload, uint32_t l
         for (uint32_t i = 0; i < accepted_count; i++) {
             m_manager->acceptedShare(m_index);
         }
+        // SV2 acknowledges in batches and does not say which sequence numbers
+        // it covers, so the stream resolves the oldest pending ones
+        ws_shares_push_verdict(m_index, -1, true, nullptr, accepted_count);
         m_manager->m_lastSubmitResponseTimestamp = esp_timer_get_time();
     }
 }
@@ -639,6 +643,7 @@ void StratumTaskV2::handleSubmitSharesError(const uint8_t *payload, uint32_t len
                                        error_code, sizeof(error_code)) == 0) {
         ESP_LOGW(m_tag, "Share rejected: %s", error_code);
         m_manager->rejectedShare(m_index);
+        ws_shares_push_verdict(m_index, seq_num, false, error_code);
         m_manager->m_lastSubmitResponseTimestamp = esp_timer_get_time();
     }
 }
@@ -647,15 +652,15 @@ void StratumTaskV2::handleSubmitSharesError(const uint8_t *payload, uint32_t len
 // Share Submission
 // ============================================================================
 
-void StratumTaskV2::submitShare(const char *jobid, const char *extranonce_2,
-                                const uint32_t ntime, const uint32_t nonce,
-                                const uint32_t version_rolled, const uint32_t version_base)
+int StratumTaskV2::submitShare(const char *jobid, const char *extranonce_2,
+                               const uint32_t ntime, const uint32_t nonce,
+                               const uint32_t version_rolled, const uint32_t version_base)
 {
     // this runs on the ASIC result task; go through m_noiseTransport.send()
     // so its lock protects the noise ctx against a concurrent close()
     if (!m_noiseTransport.getNoiseCtx()) {
         ESP_LOGE(m_tag, "Cannot submit share: no connection");
-        return;
+        return -1;
     }
 
     // Convert string job_id to uint32_t (SV2 uses numeric job IDs)
@@ -663,6 +668,7 @@ void StratumTaskV2::submitShare(const char *jobid, const char *extranonce_2,
 
     uint8_t buf[SV2_FRAME_HEADER_SIZE + 24 + 1 + 32]; // max size for extended submit
     int frame_len;
+    uint32_t seq = m_sv2_conn.sequence_number;
 
     if (m_channelType == SV2_CHANNEL_EXTENDED && extranonce_2 && strlen(extranonce_2) > 0) {
         // Extended channel: decode hex extranonce2 to binary
@@ -692,14 +698,17 @@ void StratumTaskV2::submitShare(const char *jobid, const char *extranonce_2,
 
     if (frame_len < 0) {
         ESP_LOGE(m_tag, "Failed to build SubmitShares frame");
-        return;
+        return -1;
     }
 
     m_lastSubmitTimeUs = esp_timer_get_time();
 
     if (m_noiseTransport.send(buf, frame_len) != frame_len) {
         ESP_LOGE(m_tag, "Failed to send share");
+        return -1;
     }
+
+    return (int) seq;
 }
 
 // ============================================================================

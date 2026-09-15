@@ -21,6 +21,7 @@
 #include "stratum_task.h"
 #include "system.h"
 #include "guards.h"
+#include "ws_shares.h"
 
 #define ESP_LOGIE(b, tag, fmt, ...)                                                                                                \
     do {                                                                                                                           \
@@ -263,6 +264,10 @@ void StratumTaskV1::protocolLoop()
     m_stratumAPI.resetUid();
     m_stratumAPI.clearBuffer();
 
+    // the id counter starts over, so anything the share stream still had
+    // pending for this pool can never be matched again
+    ws_shares_push_reset(m_index);
+
     ///// Start Stratum Action
     // mining.subscribe - ID: 1
     bool success = m_stratumAPI.subscribe(m_transport, board->getMiningAgent(), board->getAsicModel());
@@ -347,10 +352,10 @@ void StratumTaskV1::protocolLoop()
     }
 }
 
-void StratumTaskV1::submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
-                              const uint32_t version_rolled, const uint32_t version_base)
+int StratumTaskV1::submitShare(const char *jobid, const char *extranonce_2, const uint32_t ntime, const uint32_t nonce,
+                               const uint32_t version_rolled, const uint32_t version_base)
 {
     // V1 mining.submit expects version rolling bits (delta), not full version
     uint32_t version_delta = version_rolled ^ version_base;
-    m_stratumAPI.submitShare(m_transport, m_config->getUser(), jobid, extranonce_2, ntime, nonce, version_delta);
+    return m_stratumAPI.submitShare(m_transport, m_config->getUser(), jobid, extranonce_2, ntime, nonce, version_delta);
 }

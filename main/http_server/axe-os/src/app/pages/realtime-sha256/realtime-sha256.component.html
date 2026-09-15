@@ -1,0 +1,93 @@
+<div class="row">
+  <div class="col-12">
+    <nb-card>
+      <nb-card-header class="stream-header">
+        <span>{{ 'REALTIME_SHA256.TITLE' | translate }}</span>
+        <span class="link-state" [class.online]="connected">
+          {{ (connected ? 'REALTIME_SHA256.CONNECTED' : 'REALTIME_SHA256.DISCONNECTED') | translate }}
+        </span>
+      </nb-card-header>
+
+      <nb-card-body>
+        <p class="explain">{{ 'REALTIME_SHA256.EXPLAIN' | translate }}</p>
+
+        <div class="tiles">
+          <div class="tile">
+            <span class="tile-value">{{ verified }}</span>
+            <span class="tile-label">{{ 'REALTIME_SHA256.VERIFIED' | translate }}</span>
+          </div>
+          <div class="tile accepted">
+            <span class="tile-value">{{ accepted }}</span>
+            <span class="tile-label">{{ 'REALTIME_SHA256.ACCEPTED' | translate }}</span>
+          </div>
+          <div class="tile rejected">
+            <span class="tile-value">{{ rejected }}</span>
+            <span class="tile-label">{{ 'REALTIME_SHA256.REJECTED' | translate }}</span>
+          </div>
+          <div class="tile pending">
+            <span class="tile-value">{{ pending }}</span>
+            <span class="tile-label">{{ 'REALTIME_SHA256.PENDING' | translate }}</span>
+          </div>
+          <div class="tile">
+            <span class="tile-value">{{ bestDiff | number:'1.0-1' }}</span>
+            <span class="tile-label">{{ 'REALTIME_SHA256.BEST_DIFF' | translate }}</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button nbButton size="small" status="basic" (click)="togglePause()">
+            {{ (paused ? 'REALTIME_SHA256.RESUME' : 'REALTIME_SHA256.PAUSE') | translate }}
+          </button>
+          <button nbButton size="small" status="basic" (click)="clear()">
+            {{ 'REALTIME_SHA256.CLEAR' | translate }}
+          </button>
+          <nb-checkbox [checked]="onlySubmitted" (checkedChange)="toggleOnlySubmitted()">
+            {{ 'REALTIME_SHA256.ONLY_SUBMITTED' | translate }}
+          </nb-checkbox>
+          <span class="dropped" *ngIf="dropped > 0">
+            {{ 'REALTIME_SHA256.DROPPED' | translate:{ count: dropped } }}
+          </span>
+        </div>
+      </nb-card-body>
+    </nb-card>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <nb-card>
+      <nb-card-body class="stream-body">
+        <div class="empty" *ngIf="visibleRows.length === 0">
+          {{ 'REALTIME_SHA256.EMPTY' | translate }}
+        </div>
+
+        <div class="stream" *ngIf="visibleRows.length > 0">
+          <div class="share" *ngFor="let row of visibleRows; trackBy: trackByKey" [ngClass]="row.state">
+            <div class="share-top">
+              <span class="badge" [ngClass]="row.state">
+                {{ ('REALTIME_SHA256.STATE_' + (row.state | uppercase)) | translate }}
+              </span>
+              <span class="time">{{ row.ts | date:'HH:mm:ss' }}</span>
+              <span class="chip" *ngIf="row.dup">{{ 'REALTIME_SHA256.DUPLICATE' | translate }}</span>
+              <span class="reason" *ngIf="row.reason">{{ row.reason }}</span>
+            </div>
+
+            <div class="hash">
+              <span class="zeros">{{ zerosOf(row) }}</span><span class="rest">{{ restOf(row) }}</span>
+            </div>
+
+            <div class="meta">
+              <span><em>{{ 'REALTIME_SHA256.COL_DIFF' | translate }}</em> {{ row.diff | number:'1.0-1' }} / {{ row.poolDiff }}</span>
+              <span><em>{{ 'REALTIME_SHA256.COL_NONCE' | translate }}</em> {{ hex(row.nonce) }}</span>
+              <span><em>{{ 'REALTIME_SHA256.COL_VERSION' | translate }}</em> {{ hex(row.version) }}</span>
+              <span><em>{{ 'REALTIME_SHA256.COL_JOB' | translate }}</em> {{ row.job }}</span>
+              <span><em>{{ 'REALTIME_SHA256.COL_EN2' | translate }}</em> {{ row.en2 }}</span>
+              <span *ngIf="row.asic >= 0"><em>{{ 'REALTIME_SHA256.COL_ASIC' | translate }}</em> {{ row.asic }}</span>
+              <span><em>{{ 'REALTIME_SHA256.COL_POOL' | translate }}</em> {{ row.pool === 0 ? 'Pri' : 'Sec' }}</span>
+            </div>
+          </div>
+        </div>
+      </nb-card-body>
+    </nb-card>
+  </div>
+</div>

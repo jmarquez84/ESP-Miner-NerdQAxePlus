@@ -12,6 +12,7 @@
 #include "http_cors.h"
 #include "http_utils.h"
 #include "http_websocket.h"
+#include "ws_shares.h"
 #include "handler_influx.h"
 #include "handler_can_swarm.h"
 #include "v2/handler_v2_dashboard.h"
@@ -111,6 +112,9 @@ static void http_close_cb(void* hd, int sockfd)
         ESP_LOGI(TAG, "resetting websocket %d", sockfd);
         websocket_reset();
     }
+    // a share stream client that goes away without a CLOSE frame (or gets
+    // purged by the LRU) is only noticed here
+    ws_shares_on_socket_closed(sockfd);
     ESP_LOGD(TAG, "http_close_cb: %d", sockfd);
     if (sockfd >= 0) {
         (void)close(sockfd);
@@ -333,6 +337,11 @@ esp_err_t start_rest_server(void * pvParameters)
     httpd_uri_t ws = {.uri = "/api/ws", .method = HTTP_GET, .handler = echo_handler, .user_ctx = NULL, .is_websocket = true};
     httpd_register_uri_handler(http_server, &ws);
 
+    /* real time sha256 stream; separate from /api/ws, which hijacks the system log */
+    httpd_uri_t ws_shares = {
+        .uri = "/api/v2/ws/shares", .method = HTTP_GET, .handler = ws_shares_handler, .user_ctx = NULL, .is_websocket = true};
+    httpd_register_uri_handler(http_server, &ws_shares);
+
     httpd_uri_t update_post_ota_from_url = {
         .uri = "/api/system/OTA/github", .method = HTTP_POST, .handler = POST_OTA_update_from_url, .user_ctx = NULL};
     httpd_register_uri_handler(http_server, &update_post_ota_from_url);
@@ -365,6 +374,7 @@ esp_err_t start_rest_server(void * pvParameters)
     httpd_register_err_handler(http_server, HTTPD_404_NOT_FOUND, http_404_error_handler);
 
     websocket_start();
+    ws_shares_start();
 
     // Start the DNS server that will redirect all queries to the softAP IP
     dns_server_config_t dns_config = DNS_SERVER_CONFIG_SINGLE("*" /* all A queries */, "WIFI_AP_DEF" /* softAP netif ID */);
