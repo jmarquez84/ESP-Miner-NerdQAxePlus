@@ -133,6 +133,8 @@ class StratumApi {
     // Resets the message ID counter.
     void resetUid();
 
+    void beginRequestIds();
+
     // clear the message buffer
     void clearBuffer();
 

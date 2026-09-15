@@ -529,6 +529,21 @@ void StratumApi::resetUid()
 }
 
 //--------------------------------------------------------------------
+// beginRequestIds()
+//--------------------------------------------------------------------
+// The setup requests own ids 1..STRATUM_LAST_SETUP_ID and parse() routes that
+// whole range to parseSetupResponses(). extranonce.subscribe (id 5) is optional,
+// so without it the counter stops at 5 and the first mining.submit would reuse
+// that id - its result would be read as a setup reply and never reach
+// acceptedShare()/rejectedShare(). Skip the reserved range so they can't collide.
+void StratumApi::beginRequestIds()
+{
+    if (m_send_uid <= STRATUM_LAST_SETUP_ID) {
+        m_send_uid = STRATUM_LAST_SETUP_ID + 1;
+    }
+}
+
+//--------------------------------------------------------------------
 // clearBuffer()
 //--------------------------------------------------------------------
 void StratumApi::clearBuffer()

@@ -286,6 +286,9 @@ void StratumTaskV1::protocolLoop()
         success = success && m_stratumAPI.entranonceSubscribe(m_transport);
     }
 
+    // setup is done; submits must not reuse an id the setup range owns
+    m_stratumAPI.beginRequestIds();
+
     if (!success) {
         ESP_LOGE(m_tag, "Error sending Stratum setup commands!");
         return;
